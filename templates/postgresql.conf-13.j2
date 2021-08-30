@@ -287,7 +287,6 @@ recovery_target_action = '{{ postgresql_recovery_target_action }}'       # 'paus
 
 max_wal_senders = {{ postgresql_max_wal_senders }}		# max number of walsender processes
 				# (change requires restart)
-wal_keep_segments = {{ postgresql_wal_keep_segments }}		# in logfile segments; 0 disables
 wal_sender_timeout = {{ postgresql_wal_sender_timeout }}	# in milliseconds; 0 disables
 
 max_replication_slots = {{ postgresql_max_replication_slots }}	# max number of replication slots
