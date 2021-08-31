@@ -75,7 +75,7 @@ bonjour_name = '{{ postgresql_bonjour_name }}'			# defaults to the computer name
 					# (change requires restart)
 
 # - TCP settings -
-# see "man 7 tcp" for details
+# see "man tcp" for details
 
 tcp_keepalives_idle = {{ postgresql_tcp_keepalives_idle }}		# TCP_KEEPIDLE, in seconds;
 					# 0 selects the system default
@@ -89,7 +89,7 @@ tcp_user_timeout = {{ postgresql_tcp_user_timeout }}                   # TCP_USE
 # - Authentication -
 
 authentication_timeout = {{ postgresql_authentication_timeout }}		# 1s-600s
-password_encryption = {{ 'md5' if postgresql_password_encryption != 'scram-sha-256' else 'scram-sha-256' }}     # md5 or scram-sha-256
+password_encryption = {{ postgresql_password_encryption }}     # md5 or scram-sha-256
 db_user_namespace = {{ 'on' if postgresql_db_user_namespace else 'off' }}
 
 # GSSAPI using Kerberos
@@ -130,8 +130,10 @@ max_prepared_transactions = {{ postgresql_max_prepared_transactions }}		# zero d
 # Caution: it is not advisable to set max_prepared_transactions nonzero unless
 # you actively intend to use prepared transactions.
 work_mem = {{ postgresql_work_mem }}				# min 64kB
+hash_mem_multiplier = {{ postgresql_hash_mem_multiplier }}              # 1-1000.0 multiplier on hash table work_mem
 maintenance_work_mem = {{ postgresql_maintenance_work_mem }}		# min 1MB
 autovacuum_work_mem = {{ postgresql_autovacuum_work_mem }}		# min 1MB, or -1 to use maintenance_work_mem
+logical_decoding_work_mem = {{ postgresql_logical_decoding_work_mem }}       # min 64kB
 max_stack_depth = {{ postgresql_max_stack_depth }}			# min 100kB
 shared_memory_type = {{ postgresql_shared_memory_type }}              # the default is the first option
                                         # supported by the operating system:
@@ -150,11 +152,11 @@ dynamic_shared_memory_type = {{ postgresql_dynamic_shared_memory_type }}	# the d
 # - Disk -
 
 temp_file_limit = {{ postgresql_temp_file_limit }}			# limits per-process temp file space
-					# in kB, or -1 for no limit
+					# in kilobytes, or -1 for no limit
 
 # - Kernel Resources -
 
-max_files_per_process = {{ postgresql_max_files_per_process }}		# min 25
+max_files_per_process = {{ postgresql_max_files_per_process }}		# min 64
 					# (change requires restart)
 
 # - Cost-Based Vacuum Delay -
@@ -175,10 +177,11 @@ bgwriter_flush_after = {{ postgresql_bgwriter_flush_after }}		# measured in page
 # - Asynchronous Behavior -
 
 effective_io_concurrency = {{ postgresql_effective_io_concurrency }}		# 1-1000; 0 disables prefetching
+maintenance_io_concurrency = {{ postgresql_maintenance_io_concurrency }}        # 1-1000; 0 disables prefetching
 max_worker_processes = {{ postgresql_max_worker_processes }}		# (change requires restart)
 max_parallel_maintenance_workers = {{ postgresql_max_parallel_maintenance_workers }}	# taken from max_parallel_workers
 max_parallel_workers_per_gather = {{ postgresql_max_parallel_workers_per_gather }}	# taken from max_parallel_workers
-parallel_leader_participation = {{ 'on' if postgresql_parallel_leader_participation else 'off' }} 
+parallel_leader_participation = {{ 'on' if postgresql_parallel_leader_participation else 'off' }}
 max_parallel_workers = {{ postgresql_max_parallel_workers }}		# maximum number of max_worker_processes that
 					# can be used in parallel operations
 old_snapshot_threshold = {{ postgresql_old_snapshot_threshold }}		# 1min-60d; -1 disables; 0 is immediate
@@ -216,6 +219,7 @@ wal_buffers = {{ postgresql_wal_buffers }}			# min 32kB, -1 sets based on shared
 					# (change requires restart)
 wal_writer_delay = {{ postgresql_wal_writer_delay }}		# 1-10000 milliseconds
 wal_writer_flush_after = {{ postgresql_wal_writer_flush_after }}		# measured in pages, 0 disables
+wal_skip_threshold = {{ postgresql_wal_skip_threshold }}
 
 commit_delay = {{ postgresql_commit_delay }}			# range 0-100000, in microseconds
 commit_siblings = {{ postgresql_commit_siblings }}			# range 1-1000
@@ -287,6 +291,8 @@ recovery_target_action = '{{ postgresql_recovery_target_action }}'       # 'paus
 
 max_wal_senders = {{ postgresql_max_wal_senders }}		# max number of walsender processes
 				# (change requires restart)
+wal_keep_size = {{ postgresql_wal_keep_size }}              # in megabytes; 0 disables
+max_slot_wal_keep_size = {{ postgresql_max_slot_wal_keep_size }}    # in megabytes; -1 disables
 wal_sender_timeout = {{ postgresql_wal_sender_timeout }}	# in milliseconds; 0 disables
 
 max_replication_slots = {{ postgresql_max_replication_slots }}	# max number of replication slots
@@ -298,7 +304,7 @@ track_commit_timestamp = {{ 'on' if postgresql_track_commit_timestamp else 'off'
 
 # These settings are ignored on a standby server.
 
-synchronous_standby_names = '{{ postgresql_synchronous_standby_num_sync }}{% if postgresql_synchronous_standby_names != [] %} ({{ postgresql_synchronous_standby_names | join(',') }}){% endif %}'	# standby servers that provide sync rep
+synchronous_standby_names = '{% if postgresql_synchronous_standby_names != [] %}{% if postgresql_synchronous_standby_choose_sync != "" and postgresql_synchronous_standby_num_sync != "" %}{{ postgresql_synchronous_standby_choose_sync }} {% endif %}{% if postgresql_synchronous_standby_num_sync != "" %}{{ postgresql_synchronous_standby_num_sync }} ({% endif %}"{{ postgresql_synchronous_standby_names | join('\",\"') }}"{% if postgresql_synchronous_standby_num_sync != "" %}){% endif %}{% endif %}'	# standby servers that provide sync rep
 				# method to choose sync standbys, number of sync standbys,
 				# and comma-separated list of application_name
 				# from standby(s); '*' = all
@@ -321,6 +327,9 @@ max_standby_archive_delay = {{ postgresql_max_standby_archive_delay }}	# max del
 max_standby_streaming_delay = {{ postgresql_max_standby_streaming_delay }}	# max delay before canceling queries
 					# when reading streaming WAL;
 					# -1 allows indefinite delay
+wal_receiver_create_temp_slot = {{ postgresql_wal_receiver_create_temp_slot }}     # create temp slot if primary_slot_name
+                                        # is not set
+
 wal_receiver_status_interval = {{ postgresql_wal_receiver_status_interval }}	# send replies at least this often
 					# 0 disables
 hot_standby_feedback = {{ 'on' if postgresql_hot_standby_feedback else 'off' }}		# send info from standby to prevent
@@ -358,6 +367,7 @@ enable_nestloop = {{ 'on' if postgresql_enable_nestloop else 'off'  }}
 enable_parallel_append = {{ 'on' if postgresql_enable_parallel_append else 'off' }}
 enable_seqscan = {{ 'on' if postgresql_enable_seqscan else 'off' }}
 enable_sort = {{ 'on' if postgresql_enable_sort else 'off' }}
+enable_incremental_sort = {{ 'on' if postgresql_enable_incremental_sort else 'off' }}
 enable_tidscan = {{ 'on' if postgresql_enable_tidscan else 'off' }}
 enable_partitionwise_join = {{ 'on' if postgresql_enable_partitionwise_join else 'off' }}
 enable_partitionwise_aggregate = {{ 'on' if postgresql_enable_partitionwise_aggregate else 'off' }}
@@ -402,7 +412,7 @@ geqo_seed = {{ postgresql_geqo_seed }}			# range 0.0-1.0
 default_statistics_target = {{ postgresql_default_statistics_target }}	# range 1-10000
 constraint_exclusion = {{ postgresql_constraint_exclusion }}	# on, off, or partition
 cursor_tuple_fraction = {{ postgresql_cursor_tuple_fraction }}		# range 0.0-1.0
-from_collapse_limit = {{ postgresql_from_collapse_limit }} 
+from_collapse_limit = {{ postgresql_from_collapse_limit }}
 join_collapse_limit = {{ postgresql_join_collapse_limit }}		# 1 disables collapsing of explicit
 					# JOIN clauses
 force_parallel_mode = {{ 'on' if ( postgresql_force_parallel_mode | bool == true or postgresql_force_parallel_mode == 'on' ) else ( 'regress' if postgresql_force_parallel_mode == 'regress' else 'off' ) }}
@@ -494,6 +504,16 @@ log_min_duration_statement = {{ postgresql_log_min_duration_statement }}	# -1 is
 					# statements running at least this number
 					# of milliseconds
 
+log_min_duration_sample = {{ postgresql_log_min_duration_sample }}            # -1 is disabled, 0 logs a sample of statements
+                                        # and their durations, > 0 logs only a sample of
+                                        # statements running at least this number
+                                        # of milliseconds;
+                                        # sample fraction is determined by log_statement_sample_rate
+
+log_statement_sample_rate = {{ postgresql_log_statement_sample_rate }}         # fraction of logged statements exceeding
+                                        # log_min_duration_sample to be logged;
+                                        # 1.0 logs all such statements, 0.0 never logs
+
 log_transaction_sample_rate = {{ postgresql_log_transaction_sample_rate }}      # Fraction of transactions whose statements
                                         # are logged regardless of their duration. 1.0 logs all
                                         # statements from all transactions, 0.0 never logs.
@@ -532,6 +552,12 @@ log_line_prefix = '{{ postgresql_log_line_prefix }}'			# special values:
 					#   %% = '%'
 					# e.g. '<%u%%%d> '
 log_lock_waits = {{ 'on' if postgresql_log_lock_waits else 'off' }}			# log lock waits >= deadlock_timeout
+log_parameter_max_length = {{ postgresql_log_parameter_max_length }}           # when logging statements, limit logged
+                                        # bind-parameter values to N bytes;
+                                        # -1 means print in full, 0 disables
+log_parameter_max_length_on_error = {{ postgresql_log_parameter_max_length_on_error }}   # when logging an error, limit logged
+                                        # bind-parameter values to N bytes;
+                                        # -1 means print in full, 0 disables
 log_statement = '{{ postgresql_log_statement }}'			# none, ddl, mod, all
 log_replication_commands = {{ 'on' if postgresql_log_replication_commands else 'off' }}
 log_temp_files = {{ postgresql_log_temp_files }}			# log temporary files equal or larger
@@ -585,9 +611,14 @@ autovacuum_max_workers = {{ postgresql_autovacuum_max_workers }}		# max number o
 autovacuum_naptime = {{ postgresql_autovacuum_naptime }}		# time between autovacuum runs
 autovacuum_vacuum_threshold = {{ postgresql_autovacuum_vacuum_threshold }}	# min number of row updates before
 					# vacuum
+autovacuum_vacuum_insert_threshold = {{ postgresql_autovacuum_vacuum_insert_threshold }}      # min number of row inserts
+                                        # before vacuum; -1 disables insert
+                                        # vacuums
 autovacuum_analyze_threshold = {{ postgresql_autovacuum_analyze_threshold }}	# min number of row updates before
 					# analyze
 autovacuum_vacuum_scale_factor = {{ postgresql_autovacuum_vacuum_scale_factor }}	# fraction of table size before vacuum
+autovacuum_vacuum_insert_scale_factor = {{ postgresql_autovacuum_vacuum_insert_scale_factor }}    # fraction of inserts over table
+                                        # size before insert vacuum
 autovacuum_analyze_scale_factor = {{ postgresql_autovacuum_analyze_scale_factor }}	# fraction of table size before analyze
 autovacuum_freeze_max_age = {{ postgresql_autovacuum_freeze_max_age }}	# maximum XID age before forced vacuum
 					# (change requires restart)
